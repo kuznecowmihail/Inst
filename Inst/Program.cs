@@ -11,6 +11,7 @@ namespace Inst
     class Program
     {
         private static UserSessionData user;
+        private static string uri;
         private static IInstaApi api;
 
         static void Main(string[] args)
@@ -21,6 +22,8 @@ namespace Inst
             user.UserName = Console.ReadLine();
             Console.Write("Password: ");
             user.Password = Console.ReadLine();
+            Console.Write("Uri: ");
+            uri = Console.ReadLine();
             api = InstaApiBuilder.CreateBuilder()
                 .SetUser(user)
                 .UseLogger(new DebugLogger(LogLevel.Exceptions))
@@ -39,34 +42,39 @@ namespace Inst
             {
                 throw new Exception("auth error");
             }
-            var userResult = api.GetUserFollowingAsync(user.UserName, PaginationParameters.MaxPagesToLoad(252));
+            Console.WriteLine("authorized");
+            var mediaResult = await api.GetMediaIdFromUrlAsync(new Uri(uri));
 
-            if (!userResult.Result.Succeeded)
+            if (!mediaResult.Succeeded)
+            {
+                throw new Exception("get media id error");
+            }
+            var mediaId = mediaResult.Value;
+            Console.WriteLine($"media id: {mediaId}");
+            var userResult = await api.GetUserFollowingAsync(user.UserName, PaginationParameters.MaxPagesToLoad(500));
+
+            if (!userResult.Succeeded)
             {
                 throw new Exception("get followers error");
             }
             var users = userResult
-                .Result
                 .Value
                 .Select(user => user.UserName)
                 .ToArray();
-            
-            for(var i = 0; i < users.Count(); i = i + 2)
+            Console.WriteLine($"user count: {users.Count()}");
+
+            for (var i = 0; i < users.Count(); i++)
             {
-                if(i + 1 >= users.Count())
-                {
-                    break;
-                }
-                int timeOut = rnd.Next(1000, 2000);
-                Thread.Sleep(timeOut);
-                var commentResult = await api.CommentMediaAsync("2545956103990970313_7853189738", $"@{users[i]} @{users[i + 1]}");
+                int timeOut = rnd.Next(30000, 60000);
+                var commentResult = await api.CommentMediaAsync(mediaId, $"@{users[i]}");
                 
                 if (!commentResult.Succeeded)
                 {
-                    Console.WriteLine($"{DateTime.Now} post message error: @{users[i]} @{users[i + 1]}; time out - {timeOut}");
-                    continue;
+                    Console.WriteLine($"{DateTime.Now}. post message error: @{users[i]}. time out - {timeOut}. error - {commentResult.Info.Exception}");
+                    break;
                 }
-                Console.WriteLine($"{DateTime.Now}: @{users[i]} @{users[i + 1]}; time out - {timeOut}");
+                Console.WriteLine($"{DateTime.Now}. @{users[i]}. time out - {timeOut}");
+                Thread.Sleep(timeOut);
             }
         }
     }
