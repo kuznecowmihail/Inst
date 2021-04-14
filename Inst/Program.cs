@@ -51,29 +51,29 @@ namespace Inst
             }
             var mediaId = mediaResult.Value;
             Console.WriteLine($"media id: {mediaId}");
-            var userResult = await api.GetUserFollowingAsync(user.UserName, PaginationParameters.MaxPagesToLoad(500));
+            var followingResult = await api.GetUserFollowingAsync(user.UserName, PaginationParameters.MaxPagesToLoad(500));
 
-            if (!userResult.Succeeded)
+            if (!followingResult.Succeeded)
             {
-                throw new Exception("get followers error");
+                throw new Exception("get following error");
             }
-            var users = userResult
+            var following = followingResult
                 .Value
                 .Select(user => user.UserName)
-                .ToArray();
-            Console.WriteLine($"user count: {users.Count()}");
+                .ToList();
+            Console.WriteLine($"user count: {following.Count()}");
 
-            for (var i = 0; i < users.Count(); i++)
+            for (var i = 0; i < following.Count(); i++)
             {
                 int timeOut = rnd.Next(30000, 60000);
-                var commentResult = await api.CommentMediaAsync(mediaId, $"@{users[i]}");
+                var commentResult = await api.CommentMediaAsync(mediaId, $"@{following[i]}");
                 
                 if (!commentResult.Succeeded)
                 {
-                    Console.WriteLine($"{DateTime.Now}. post message error: @{users[i]}. time out - {timeOut}. error - {commentResult.Info.Exception}");
+                    Console.WriteLine($"{DateTime.Now}. post message error: @{following[i]}. time out - {timeOut}. error - {commentResult.Info.Exception}");
                     break;
                 }
-                Console.WriteLine($"{DateTime.Now}. @{users[i]}. time out - {timeOut}");
+                Console.WriteLine($"{DateTime.Now}. @{following[i]}. time out - {timeOut}");
                 Thread.Sleep(timeOut);
             }
         }
